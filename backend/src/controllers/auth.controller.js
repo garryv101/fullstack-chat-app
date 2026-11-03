@@ -2,6 +2,7 @@ import cloudinary from "../lib/cloudinary.js";
 import { generateToken } from "../lib/utils.js";
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 export const signup = async (req, res) => {
   const { fullName, email, password } = req.body;
@@ -125,4 +126,19 @@ export const checkAuth = (req, res) => {
     console.log("Error in checkAuth controller", error.message);
     res.status(500).json({ message: "Internal Server Error" });
   }
-}
+};
+
+export const issueSocketToken = (req, res) => {
+  try {
+    const token = jwt.sign(
+      { userId: String(req.user._id), purpose: "socket" },
+      process.env.JWT_SECRET,
+      { expiresIn: "1m" },
+    );
+
+    res.status(200).json({ token });
+  } catch (error) {
+    console.error("Error issuing socket token:", error.message);
+    res.status(500).json({ message: "Failed to authorize socket connection" });
+  }
+};

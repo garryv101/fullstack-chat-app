@@ -66,29 +66,22 @@ export function disconnectUserSockets(userId) {
 }
 
 io.use((socket, next) => {
-  const cookieHeader = socket.handshake.headers.cookie ?? "";
-  const tokenCookie = cookieHeader
-    .split(";")
-    .map((cookie) => cookie.trim())
-    .find((cookie) => cookie.startsWith("jwt="));
-
-  if (!tokenCookie) {
-    console.warn("Socket authentication rejected: JWT cookie missing");
-    next(new Error("Authentication required"));
-    return;
-  }
-
   try {
-    const token = decodeURIComponent(tokenCookie.slice("jwt=".length));
+    const token = socket.handshake.auth?.token;
+    if (typeof token !== "string" || !token) {
+      next(new Error("Socket authentication required"));
+      return;
+    }
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     if (
       typeof decoded !== "object" ||
       decoded === null ||
       typeof decoded.userId !== "string" ||
-      !decoded.userId
+      !decoded.userId ||
+      decoded.purpose !== "socket"
     ) {
-      console.warn("Socket authentication rejected: JWT has no valid user ID");
-      next(new Error("Invalid authentication token"));
+      next(new Error("Invalid socket token"));
       return;
     }
 
@@ -96,7 +89,7 @@ io.use((socket, next) => {
     next();
   } catch (error) {
     console.warn("Socket authentication rejected:", error.message);
-    next(new Error("Invalid authentication token"));
+    next(new Error("Invalid socket token"));
   }
 });
 

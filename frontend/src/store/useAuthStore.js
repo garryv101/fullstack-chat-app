@@ -94,7 +94,21 @@ export const useAuthStore = create((set, get) => ({
       return;
     }
 
-    const newSocket = io(BASE_URL, { withCredentials: true });
+    const newSocket = io(BASE_URL, {
+      withCredentials: true,
+      auth: (callback) => {
+        axiosInstance
+          .get("/auth/socket-token")
+          .then((response) => callback({ token: response.data.token }))
+          .catch((error) => {
+            console.error(
+              "Could not authorize socket connection:",
+              error.response?.data?.message || error.message,
+            );
+            callback({ token: "" });
+          });
+      },
+    });
     newSocket.on("connect", () => {
       console.info("Socket connected:", {
         socketId: newSocket.id,
