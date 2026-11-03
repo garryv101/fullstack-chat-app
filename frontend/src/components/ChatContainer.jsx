@@ -11,14 +11,20 @@ const isSameId = (left, right) =>
   String(right?.toHexString?.() ?? right?._id ?? right);
 
 const ChatContainer = () => {
-  const { messages, getMessages, isMessagesLoading, selectedUser, subscribeToMessages } = useChatStore();
+  const { messages, getMessages, syncMessages, isMessagesLoading, selectedUser, subscribeToMessages } = useChatStore();
   const { authUser, socket } = useAuthStore();
   const messageEndRef = useRef(null);
 
 
   useEffect(() => {
     getMessages(selectedUser._id);
-  }, [selectedUser._id, getMessages]);
+    const syncInterval = window.setInterval(
+      () => syncMessages(selectedUser._id),
+      3000,
+    );
+
+    return () => window.clearInterval(syncInterval);
+  }, [selectedUser._id, getMessages, syncMessages]);
 
   useEffect(() => {
     return subscribeToMessages(socket);

@@ -6,6 +6,30 @@ import { useAuthStore } from "./useAuthStore";
 const getId = (value) =>
   String(value?.toHexString?.() ?? value?._id ?? value);
 
+const mergeConversationMessages = (
+  currentMessages,
+  incomingMessages,
+  userId,
+  contactId,
+) => {
+  const isInConversation = (message) =>
+    (getId(message.senderId) === getId(userId) &&
+      getId(message.receiverId) === getId(contactId)) ||
+    (getId(message.senderId) === getId(contactId) &&
+      getId(message.receiverId) === getId(userId));
+
+  const messagesById = new Map(
+    [
+      ...currentMessages.filter(isInConversation),
+      ...incomingMessages,
+    ].map((message) => [getId(message._id), message]),
+  );
+
+  return [...messagesById.values()].sort(
+    (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
+  );
+};
+
 export const useChatStore = create((set, get) => ({
     messages: [],
     users: [],
@@ -30,30 +54,36 @@ export const useChatStore = create((set, get) => ({
     set({ isMessagesLoading: true });
     try {
       const res = await axiosInstance.get(`/messages/${userId}`);
-      set((state) => {
-        const messagesById = new Map(
-          [
-            ...res.data,
-            ...state.messages.filter(
-              (message) =>
-                String(message.senderId) === String(userId) ||
-                String(message.receiverId) === String(userId),
-            ),
-          ].map((message) => [
-            String(message._id),
-            message,
-          ]),
-        );
-        return {
-          messages: [...messagesById.values()].sort(
-            (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
-          ),
-        };
-      });
+      const currentUserId = useAuthStore.getState().authUser?._id;
+      set((state) => ({
+        messages: mergeConversationMessages(
+          state.messages,
+          res.data,
+          currentUserId,
+          userId,
+        ),
+      }));
     } catch (error) {
       toast.error(error.response.data.message);
     } finally {
       set({ isMessagesLoading: false });
+    }
+  },
+
+  syncMessages: async (userId) => {
+    try {
+      const res = await axiosInstance.get(`/messages/${userId}`);
+      const currentUserId = useAuthStore.getState().authUser?._id;
+      set((state) => ({
+        messages: mergeConversationMessages(
+          state.messages,
+          res.data,
+          currentUserId,
+          userId,
+        ),
+      }));
+    } catch (error) {
+      console.error("Failed to sync conversation messages:", error);
     }
   },
 
