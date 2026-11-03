@@ -56,6 +56,15 @@ export function getOnlineUserIds() {
   return [...userSocketMap.keys()];
 }
 
+export function disconnectUserSockets(userId) {
+  const socketIds = userSocketMap.get(String(userId));
+  if (!socketIds) return;
+
+  for (const socketId of socketIds) {
+    io.sockets.sockets.get(socketId)?.disconnect(true);
+  }
+}
+
 io.use((socket, next) => {
   const cookieHeader = socket.handshake.headers.cookie ?? "";
   const tokenCookie = cookieHeader
