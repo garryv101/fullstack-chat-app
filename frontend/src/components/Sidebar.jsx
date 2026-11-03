@@ -7,8 +7,11 @@ import { useAuthStore } from "../store/useAuthStore";
 const Sidebar = () => {
   const { getUsers, users, selectedUser, setSelectedUser, isUsersLoading } = useChatStore();
 
-  const { onlineUsers } = useAuthStore();
+  const { authUser, onlineUsers } = useAuthStore();
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
+  const onlineContactCount = onlineUsers.filter(
+    (userId) => userId !== String(authUser?._id),
+  ).length;
 
   useEffect(() => {
     getUsers();
@@ -25,7 +28,18 @@ const Sidebar = () => {
           <Users className="size-6" />
           <span className="font-medium hidden lg:block">Contacts</span>
         </div>
-        {/* TODO: Online filter toggle */}
+        {authUser && (
+          <div className="mt-2 hidden lg:flex items-center gap-2 text-sm text-zinc-400">
+            <span
+              className={`size-2 rounded-full ${
+                onlineUsers.includes(String(authUser._id))
+                  ? "bg-green-500"
+                  : "bg-zinc-500"
+              }`}
+            />
+            You are {onlineUsers.includes(String(authUser._id)) ? "online" : "offline"}
+          </div>
+        )}
          <div className="mt-3 hidden lg:flex items-center gap-2">
           <label className="cursor-pointer flex items-center gap-2">
             <input
@@ -36,7 +50,7 @@ const Sidebar = () => {
             />
             <span className="text-sm">Show online only</span>
           </label>
-          <span className="text-xs text-zinc-500">({onlineUsers.length - 1} online)</span>
+          <span className="text-xs text-zinc-500">({onlineContactCount} online)</span>
         </div>
       </div>
 

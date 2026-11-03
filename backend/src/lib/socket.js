@@ -6,10 +6,42 @@ import jwt from "jsonwebtoken";
 const app = express();
 const server = http.createServer(app);
 
+const allowedOrigins = new Set(
+  ["http://localhost:5173", process.env.CLIENT_URL]
+    .filter(Boolean)
+    .map((origin) => new URL(origin).origin),
+);
+
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173"],
+    origin: true,
     credentials: true,
+  },
+  allowRequest: (request, callback) => {
+    const origin = request.headers.origin;
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    try {
+      const requestOrigin = new URL(origin);
+      const forwardedProtocol = request.headers["x-forwarded-proto"]
+        ?.split(",")[0]
+        .trim();
+      const requestProtocol =
+        forwardedProtocol || (request.socket.encrypted ? "https" : "http");
+      const sameOrigin =
+        requestOrigin.host === request.headers.host &&
+        requestOrigin.protocol === `${requestProtocol}:`;
+
+      callback(
+        null,
+        sameOrigin || allowedOrigins.has(requestOrigin.origin),
+      );
+    } catch {
+      callback(null, false);
+    }
   },
 });
 
